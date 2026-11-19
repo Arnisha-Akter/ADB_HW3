@@ -1,0 +1,14 @@
+# Compiled Java class files
+*.class
+bin/
+
+# Environment files with sensitive credentials (NEVER commit to git!)
+.env
+.env.local
+.env.*.local
+
+# OS & IDE files
+.DS_Store
+.idea/
+*.iml
+.vscode/
