@@ -4,7 +4,7 @@ Solution for **Homework 3 ("Homework 2 revisited")**, based on PostgreSQL and Ja
 
 > **Results:** all numbers below come from one complete `--all` run on 2026-11-22
 > (raw data: `results/results.csv`, one line per run). Machine: Windows, 12 logical CPU cores,
-> PostgreSQL 16 on localhost, JDK 21. Charts: `Bild5_Thread_Scaling.png`, `Bild6_Serial_vs_Concurrent.png`.
+> PostgreSQL 16 on localhost, JDK 21. Charts and screenshots: `results/figures/`.
 
 ---
 
@@ -25,6 +25,7 @@ Solution for **Homework 3 ("Homework 2 revisited")**, based on PostgreSQL and Ja
 │   └── ConnectionFactory.java      JDBC connection, credentials from .env
 ├── sql/analysis.sql                EXPLAIN, bloat, logging, pg_stat_statements (Task 2.2)
 ├── results/results.csv             Created by the suite – one line per run
+├── results/figures/                Charts and screenshots used in the talk
 ├── schema.sql
 └── .env.example                    Copy to .env and enter your credentials
 ```
@@ -123,10 +124,7 @@ Observations:
 * The first baseline run with 1 thread (569 tx/s) is clearly lower than the other two: the very first
   run of the suite starts with a cold cache / JIT despite the warm-up. This is why we report min–max.
 
-Things to discuss: up to which thread count is the speed-up (nearly) linear? Where is the knee
-compared to the number of CPU cores (client **and** PostgreSQL backends share them)?
-Note: >100 % efficiency at 2 threads is possible, because one thread waits for the network/disk
-while the other uses the CPU (latency hiding).
+![Throughput vs. number of threads](results/figures/Bild5_Thread_Scaling.png)
 
 ### 1.4 Live demo (`--demo`)
 30 seconds, optimized, 4 threads: the status line shows committed transactions and tx/s per
@@ -156,6 +154,11 @@ Tools used:
    ```
    Open `baseline.jfr` in JDK Mission Control → *Threads* / *Lock Instances* / *Socket I/O*.
    Expected: worker threads block on the `PrintStream` monitor (console) and wait in socket reads.
+
+![EXPLAIN full scan](results/figures/Bild7_EXPLAIN_FullScan.png)
+![EXPLAIN point read](results/figures/Bild8_EXPLAIN_PointRead.png)
+
+![pgAdmin dashboard during the benchmark](results/figures/Bild1_Benchmark_SQL.png)
 
 Findings (8 threads, numbers from `--compare`):
 
@@ -192,6 +195,8 @@ committed transactions (no corruption, but durability is relaxed). This must be 
 
 Every variant processed the identical stream of 20,000 transactions; 0 deadlock restarts in all runs.
 
+![Serial vs. concurrent and each optimization on its own](results/figures/Bild6_Serial_vs_Concurrent.png)
+
 Separate the two effects in the talk:
 * **Parallelism:** concurrent optimized ÷ serial optimized
 * **Optimizations:** concurrent optimized ÷ concurrent baseline
@@ -223,8 +228,8 @@ Results:
    so two transactions almost never touch the same rows in conflicting order.
 
 **Extra measurement: console output instead of a log file** (8 threads, same stream of 20,000 tx,
-1 run each, sums printed live in the VS Code terminal; screenshots `Bild9_Console_Baseline.png`,
-`Bild10_Console_Optimized.png`):
+1 run each, sums printed live in the VS Code terminal; screenshots `results/figures/Bild9_Console_Baseline.png`,
+`results/figures/Bild10_Console_Optimized.png`):
 
 | Variant | Throughput tx/s | vs. same variant with output into a file |
 |---|---|---|
