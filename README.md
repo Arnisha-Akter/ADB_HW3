@@ -153,7 +153,11 @@ Tools used:
    java -XX:StartFlightRecording=duration=60s,filename=baseline.jfr -cp "bin;lib/postgresql-42.2.18.jar" BenchmarkSuite --run baseline --threads 8 --duration 40
    ```
    Open `baseline.jfr` in JDK Mission Control → *Threads* / *Lock Instances* / *Socket I/O*.
-   Expected: worker threads block on the `PrintStream` monitor (console) and wait in socket reads.
+   Result (baseline, 8 threads, 40 s; `jfr view hot-methods`, `contention-by-site`, `native-methods`):
+   only 13 samples executing Java code in 50 s, so the client hardly computes; no monitor contention above
+   the 20 ms recording threshold; native time: 81 % `Net.poll` (waiting for PostgreSQL to answer), 11 % socket
+   writes (sending queries), 5 % `FileOutputStream.writeBytes` (console output). The client waits for the
+   database, mostly for the full scans.
 
 ![EXPLAIN full scan](results/figures/Bild7_EXPLAIN_FullScan.png)
 ![EXPLAIN point read](results/figures/Bild8_EXPLAIN_PointRead.png)
@@ -214,6 +218,8 @@ Results:
    so the table starts 44 % larger (2.49 → 3.59 MB) and every full scan reads more pages. Within our
    short runs the table grew by the same ~0.2 MB with and without it, so the advantage
    (less bloat over a long run) does not show yet – the net effect is within the noise.
+   A longer 40 s baseline run shows the effect: the table grew from 2.5 to 3.4 MB and the full scan slowed
+   from 7.6 to 12.1 ms.
 3. **With 16 threads the baseline beats the optimized variant** (4,177 vs. 3,646 tx/s). With 16 client
    threads + 16 backends on 12 cores the CPU is saturated and the full scan dominates (70 % of the
    time); the larger table from fillfactor makes exactly this scan more expensive.
